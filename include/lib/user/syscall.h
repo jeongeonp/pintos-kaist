@@ -3,13 +3,14 @@
 
 #include <stdbool.h>
 #include <debug.h>
+#include <stddef.h>
 
 /* Process identifier. */
 typedef int pid_t;
 #define PID_ERROR ((pid_t) -1)
 
 /* Map region identifier. */
-typedef int mapid_t;
+typedef int off_t;
 #define MAP_FAILED ((mapid_t) -1)
 
 /* Maximum characters in a filename written by readdir(). */
@@ -22,7 +23,7 @@ typedef int mapid_t;
 /* Projects 2 and later. */
 void halt (void) NO_RETURN;
 void exit (int status) NO_RETURN;
-pid_t fork (void);
+pid_t fork (const char *thread_name);
 int exec (const char *file);
 int wait (pid_t);
 bool create (const char *file, unsigned initial_size);
@@ -35,9 +36,11 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 
+int dup2(int oldfd, int newfd);
+
 /* Project 3 and optionally project 4. */
-mapid_t mmap (int fd, void *addr);
-void munmap (mapid_t);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 /* Project 4 only. */
 bool chdir (const char *dir);

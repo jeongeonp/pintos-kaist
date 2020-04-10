@@ -174,7 +174,7 @@ thread_tick (int64_t tick) {
 	/* Enforce preemption. */
 	if (++thread_ticks >= TIME_SLICE)
 		intr_yield_on_return ();
-}	
+}
 
 /* Prints thread statistics. */
 void
@@ -334,7 +334,7 @@ thread_exit (void) {
 	ASSERT (!intr_context ());
 
 #ifdef USERPROG
-	process_cleanup ();
+	process_exit ();
 #endif
 
 	/* Just set our status to dying and schedule another process.
@@ -766,7 +766,7 @@ thread_launch (struct thread *th) {
 static void
 do_schedule(int status) {
 	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (thread_current() ->status == THREAD_RUNNING);
+	ASSERT (thread_current ()->status == THREAD_RUNNING);
 	while (!list_empty (&destruction_req)) {
 		struct thread *victim =
 			list_entry (list_pop_front (&destruction_req), struct thread, elem);
@@ -825,4 +825,3 @@ allocate_tid (void) {
 
 	return tid;
 }
-

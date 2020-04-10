@@ -49,7 +49,6 @@ sema_init (struct semaphore *sema, unsigned value) {
 	list_init (&sema->waiters);
 }
 
-
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
    to become positive and then atomically decrements it.
 
@@ -61,7 +60,6 @@ sema_init (struct semaphore *sema, unsigned value) {
 void
 sema_down (struct semaphore *sema) {
 	enum intr_level old_level;
-	
 	ASSERT (sema != NULL);
 	ASSERT (!intr_context ());
 
@@ -72,7 +70,6 @@ sema_down (struct semaphore *sema) {
 		thread_block ();
 	}
 	sema->value--;
-
 	intr_set_level (old_level);
 }
 
@@ -185,7 +182,6 @@ lock_init (struct lock *lock) {
 	sema_init (&lock->semaphore, 1);
 }
 
-
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.
@@ -199,6 +195,7 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
+<<<<<<< HEAD
 	
 	/* LAB 1: mlfqs case */
 	if (!thread_mlfqs) {
@@ -223,9 +220,6 @@ lock_acquire (struct lock *lock) {
 
 	lock->holder = thread_current ();
 }
-
-
-
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
