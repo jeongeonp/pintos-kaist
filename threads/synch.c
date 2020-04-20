@@ -105,7 +105,6 @@ sema_try_down (struct semaphore *sema) {
 void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
-	struct thread *next;
 
 	ASSERT (sema != NULL);
 
@@ -195,7 +194,6 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
-<<<<<<< HEAD
 	
 	/* LAB 1: mlfqs case */
 	if (!thread_mlfqs) {

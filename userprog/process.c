@@ -251,10 +251,12 @@ process_cleanup (void) {
 void
 process_activate (struct thread *next) {
 	/* Activate thread's page tables. */
-	pml4_activate (next->pml4);
+	if (next->pml4 != NULL) {
+		pml4_activate (next->pml4);
 
 	/* Set thread's kernel stack for use in processing interrupts. */
 	tss_update (next);
+	}
 }
 
 /* We load ELF binaries.  The following definitions are taken
@@ -329,6 +331,17 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	char *token, *save_ptr;
+	int argc = 0;
+
+	for (token = strtok_r (&file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+		argc++;
+	}
+
+	char argv[argc];
+	int *rsp = if_->rsp;
+	int pos = 0;
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -399,7 +412,7 @@ load (const char *file_name, struct intr_frame *if_) {
 					}
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
-						goto done;
+						goto done; /* LAB 2: Stacks files to memory */
 				}
 				else
 					goto done;
@@ -414,8 +427,43 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
+	/* LAB 2: Argument Parsing */
 	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	 * TODO: Implement argument passing (see project2/argument_passing.html). */   
+
+	// Push data into stack
+	for (token = strtok_r (&file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+		rsp -= strlen(token);
+		argv[argc-pos] = rsp;
+		*rsp = token;
+		rsp -= 1;
+		*rsp = NULL;
+		pos++;
+	}
+	
+	// Word align
+	for (int i = 0; i < (8 - ((uint64_t)rsp % 8)); i++) {
+		*rsp = 0;
+		rsp -= 1;
+	}
+	
+	// Push data pointer into stack, in order
+	argv[argc] = 0;
+	rsp -= 1;
+	*rsp = argv[argc];
+	for (i = argc-1; i >= 0; i--) {
+		rsp -= strlen(argv[i]);
+		*rsp = argv[i]; 
+	}
+
+	// Point %rsi to argv and %rdi to argc
+	if_->R.rsi = argv[0];
+	if_->R.rdi = argc;
+	
+	// Push a fake return address
+	*rsp -= 8;
+	*rsp = 0;
+	//hex_dump (0, *rsp, 4, true);
 
 	success = true;
 
@@ -424,7 +472,6 @@ done:
 	file_close (file);
 	return success;
 }
-
 
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */

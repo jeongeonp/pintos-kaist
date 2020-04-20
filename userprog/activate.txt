@@ -1,0 +1,3 @@
+cd ..
+source ./activate
+cd userprog/build

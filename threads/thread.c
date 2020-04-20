@@ -414,7 +414,9 @@ thread_preemption (void) {
 	struct list_elem *max_elem = list_begin (&ready_list);
 	struct thread *max_thread = list_entry (max_elem, struct thread, elem);
 	if (max_thread->priority > thread_current ()->priority) {
-		thread_yield ();
+		if( !intr_context() ) {
+			thread_yield ();
+		}
 	}
 }
 
