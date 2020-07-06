@@ -203,6 +203,7 @@ thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
 	struct thread *t;
 	tid_t tid;
+	pid_t pid; /* LAB 2: Initialize process identifier */
 
 	ASSERT (function != NULL);
 
@@ -214,6 +215,7 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
+	pid = t->pid = tid; /* LAB 2: Create pid */ /* TODO: Added alone */
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -226,10 +228,25 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* LAB 2: Initialize process fields */
+	t->exit_status = 1;
+	t->parent = thread_current (); /* TODO: */
+	t->load_success = 0;
+	t->exit_success = 0;
+	sema_init (&t->exit_sema, 0);
+	sema_init (&t->load_sema, 0);
+	//list_push_back (&thread_current ()->child, &t->child_elem);
+	
+	/* LAB 2: File descriptor table allocation */
+	t->fdt_ptr = malloc(sizeof(struct file_fd *) * 128);
+	t->max_fd = 1;
+
 	/* Add to run queue. */
 	thread_unblock (t);
 
-	compare_top_priority (); /* LAB 1: yield after comparing with the top list element */
+	/* LAB 1: Yield after comparing with the top list element */
+	compare_top_priority ();
+
 	return tid;
 }
 
@@ -794,7 +811,9 @@ schedule (void) {
 
 #ifdef USERPROG
 	/* Activate the new address space. */
-	process_activate (next);
+	if (next->pml4 != NULL) {
+		process_activate (next);
+	}
 #endif
 
 	if (curr != next) {

@@ -21,12 +21,18 @@ enum thread_status {
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
+typedef int pid_t; /* LAB 2: declare pid_t */
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
 /* Thread priorities. */
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+typedef struct file_fd { /* LAB 2: Defining file_fd */
+	struct file *f;
+	int fd;
+};
 
 /* A kernel thread or user process.
  *
@@ -109,21 +115,35 @@ struct thread {
 	unsigned magic;                     /* Detects stack overflow. */
 
 	/* LAB 1: Alarm Clock */
-	int64_t wakeup_time;		/* LAB 1: Waking up time in ticks, refreshes every time */
-	struct list_elem wait_elem;	/* LAB 1: List element for the wait queue */
+	int64_t wakeup_time;			/* Waking up time in ticks, refreshes every time */
+	struct list_elem wait_elem;		/* List element for the wait queue */
 	
 	/* LAB 1: Priority Donation */
-	int actual_priority;            /* LAB 1: The initial priority */
-	struct lock *waiting_lock;      /* LAB 1: The lock that the thread is waiting on */
-	struct list donations;          /* LAB 1: List of threads that have donated priority */
-	struct list_elem don_elem;      /* LAB 1: List element of donations list */
+	int actual_priority;            /* The initial priority */
+	struct lock *waiting_lock;      /* The lock that the thread is waiting on */
+	struct list donations;          /* List of threads that have donated priority */
+	struct list_elem don_elem;      /* List element of donations list */
 	
 
-	/*LAB 1: Advanced Scheduling */
-	int nice;			/* LAB 1: Niceness */
-	int recent_cpu;			/* LAB 1: CPU time taken recently */
-	struct list_elem all_elem;	/* LAB 1: All list elem */
+	/* LAB 1: Advanced Scheduling */
+	int nice;						/* Niceness */
+	int recent_cpu;					/* CPU time taken recently */
+	struct list_elem all_elem;		/* All list elem */
+
+	/* LAB 2: System Call */
+	int exit_status;				/* Exit status */
+	pid_t pid;						/* Process identifier */
+	struct thread *parent;			/* Pointer to parent */
+	struct list child;				/* Child list */ 
+	struct list_elem child_elem; 	/* List element of child */
+	int load_success;				/* Was the process creation successful */
+	int exit_success;				/* Did the process terminate */
+	struct semaphore *exit_sema;	/* Semaphore that waits for child process termination */
+	struct semaphore *load_sema;	/* Semaphore that waits for child process creation */
+	struct file_fd **fdt_ptr;		/* File Descriptor Table pointer */
+	int max_fd;						/* Maximum fd */
 };
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

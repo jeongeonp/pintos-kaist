@@ -204,6 +204,8 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	
+	for (int i = 0; i < 100000000; i++);
 	return -1;
 }
 
@@ -251,12 +253,10 @@ process_cleanup (void) {
 void
 process_activate (struct thread *next) {
 	/* Activate thread's page tables. */
-	if (next->pml4 != NULL) {
-		pml4_activate (next->pml4);
+	pml4_activate (next->pml4);
 
 	/* Set thread's kernel stack for use in processing interrupts. */
 	tss_update (next);
-	}
 }
 
 /* We load ELF binaries.  The following definitions are taken
@@ -333,14 +333,25 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	char *token, *save_ptr;
 	int argc = 0;
+	//int pos = 0;
 
-	for (token = strtok_r (&file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
-		argc++;
+	/*
+	for (int count = 0; file_name[count]; count++) {
+		if (file_name[count] == ' ') {
+			argc += 1;
+		}
 	}
-
-	char argv[argc];
-	int *rsp = if_->rsp;
-	int pos = 0;
+	argc += 1;
+	*/
+	
+	char *arg[128];
+	char **argv[128];
+	void *rsp;
+	
+	for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+		arg[argc] = token + '\0';
+		argc += 1;
+	}
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
@@ -427,43 +438,51 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
-	/* LAB 2: Argument Parsing */
+	//printf ("***before argument passing\n");
+	/* LAB 2: Argument Passing */
 	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */   
+	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+
+	rsp = if_->rsp;
 
 	// Push data into stack
-	for (token = strtok_r (&file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
-		rsp -= strlen(token);
-		argv[argc-pos] = rsp;
-		*rsp = token;
-		rsp -= 1;
-		*rsp = NULL;
-		pos++;
+	for (int i = argc-1; i >= 0; i--) {
+		rsp -= strlen(arg[i])+1;
+		memcpy (rsp, arg[i], strlen(arg[i])+1);
+		argv[i] = (uint64_t)rsp;
 	}
 	
 	// Word align
-	for (int i = 0; i < (8 - ((uint64_t)rsp % 8)); i++) {
-		*rsp = 0;
+	while ((uint64_t)rsp % 8 != 0) {
 		rsp -= 1;
-	}
-	
-	// Push data pointer into stack, in order
-	argv[argc] = 0;
-	rsp -= 1;
-	*rsp = argv[argc];
-	for (i = argc-1; i >= 0; i--) {
-		rsp -= strlen(argv[i]);
-		*rsp = argv[i]; 
+		*(uint8_t *)rsp = 0;
 	}
 
-	// Point %rsi to argv and %rdi to argc
-	if_->R.rsi = argv[0];
-	if_->R.rdi = argc;
+	//argv[argc] = NULL;
+	rsp -= 8;
+	*(uint64_t *)rsp = NULL;
 	
+	// Push data pointer into stack, in order
+	for (int i = argc-1; i >= 0; i--) {
+		rsp -= 8;
+		*(uint64_t *)rsp = argv[i];
+	}
+	
+	// Point %rsi to argv and %rdi to argc
+	if_->R.rdi = argc;
+	if_->R.rsi = rsp;
+	
+	//printf ("%x\n", if_->R.rsi);
+	//printf ("%d\n", if_->R.rdi);
+
 	// Push a fake return address
-	*rsp -= 8;
-	*rsp = 0;
-	//hex_dump (0, *rsp, 4, true);
+	rsp -= 8;
+	*(uint64_t *)rsp = 0; /* TODO: */
+	
+	if_->rsp = rsp;
+	/* Debugging */	
+	//printf ("Hey! This is your stack!\n");
+	//hex_dump(rsp, rsp, 100, true);
 
 	success = true;
 
